@@ -6,17 +6,17 @@ import time
 import json
 import os
 import re
+import requests
+
 
 from PyQt6.QtWidgets import QApplication, QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QTextEdit, QLineEdit, QLabel, QFrame, QStackedWidget, QSpacerItem, QSizePolicy
 from PyQt6.QtGui import QPixmap, QIcon, QPalette, QBrush, QMovie, QRegion, QPainterPath
-from PyQt6.QtCore import Qt, QThread, pyqtSignal, QUrl, QSize, QRect, QBuffer, QTimer # NOUVEL IMPORT
+from PyQt6.QtCore import Qt, QThread, pyqtSignal, QUrl, QSize, QRect, QBuffer, QTimer
 from PyQt6.QtWebEngineWidgets import QWebEngineView
 from PyQt6.QtWebEngineCore import QWebEngineProfile, QWebEnginePage
 
-from modules.brain import Brain
 from modules.ears import Ears
 from modules.voice import Voice
-from modules.actions import Actions
 import config
 
 # ... (AudioListenThread inchangé) ...
@@ -138,14 +138,24 @@ class HectorWindow(QWidget):
             self.right_panel_container.clearMask()
 
     def init_hector_modules(self):
+        """
+        Initialise les modules CÔTÉ CLIENT. Brain et Actions sont sur le serveur.
+        """
         try:
-            self.brain = Brain()
-            self.ears = Ears()
-            self.voice = Voice()
-            self.actions = Actions()
+            # self.brain = Brain()       # <-- ON NE CHARGE PLUS LE CERVEAU ICI
+            self.ears = Ears()           # Les oreilles restent sur le client (votre PC)
+            self.voice = Voice()         # La voix reste sur le client (votre PC)
+            # self.actions = Actions()   # <-- ON NE CHARGE PLUS LES ACTIONS SERVEUR ICI
             self.conversation_history = []
+            
+            # --- CONFIGURATION CRUCIALE DE L'API ---
+            # Remplacez l'IP et le port par ceux que RunPod vous a fournis.
+            # Exemple : "http://123.45.67.89:12345"
+            self.SERVER_URL = "http://VOTRE_IP_PUBLIQUE_RUNPOD:PORT" 
+            # ----------------------------------------
+            
         except Exception as e:
-            self.append_conversation("System Error", f"Échec de l'initialisation: {e}")
+            self.append_conversation("System Error", f"Échec de l'initialisation des modules clients: {e}")
 
     def connect_signals(self):
         self.update_conversation_signal.connect(self._append_conversation_thread_safe)
@@ -662,112 +672,101 @@ class HectorWindow(QWidget):
     #        print(f"Historique après troncature. Nouvelle longueur : {final_length}")
 
     def process_command(self):
-
-        self._prune_conversation_history()
-        self.append_conversation("Hector", "Je réfléchis...")
+        self.append_conversation("Hector", "Je contacte le serveur...")
         
         try:
-            # 1. Obtenir la décision du cerveau
-            hector_action_or_response = self.brain.think(self.conversation_history)
-            self.conversation_history.append({"role": "assistant", "content": hector_action_or_response}) # Garde la décision brute dans l'historique
+            # 1. Appeler l'endpoint /think du serveur
+            response = requests.post(
+                f"{self.SERVER_URL}/think",
+                json={"history": self.conversation_history},
+                timeout=120  # Timeout de 2 minutes pour laisser le temps au LLM de répondre
+            )
+            response.raise_for_status()  # Lève une erreur si la requête a échoué (ex: 404, 500)
             
-            # 2. Analyser la réponse pour un appel d'outil
+            data = response.json()
+            if "error" in data:
+                raise Exception(f"Erreur du serveur : {data['error']}")
+                
+            hector_action_or_response = data.get("response")
+            self.conversation_history.append({"role": "assistant", "content": hector_action_or_response})
+
+            # 2. Analyser la réponse pour un appel d'outil (comme avant)
             tool_name, tool_params = self._parse_tool_call(hector_action_or_response)
 
             if tool_name and tool_params is not None:
-                # C'est un appel d'outil
-                self.append_conversation("Tool", f"Exécution : {tool_name}({json.dumps(tool_params)})") # Utilise json.dumps pour un affichage propre des params
-                
-                if tool_name == 'search_web':
-                    query = tool_params.get("query")
-                    if query:
-                        tool_result_raw = self.actions.search_web(query=query)
-                        self.conversation_history.append({"role": "tool_result", "content": tool_result_raw})
-                        
-                        url_match = re.search(r"URL:\s*(https?://[^\s]+)", tool_result_raw)
+                # Si l'action doit être exécutée par le SERVEUR
+                if tool_name in ["create_video", "get_current_time", "search_web"]:
+                    self.append_conversation("Tool", f"Demande au serveur d'exécuter : {tool_name}")
+                    
+                    # Définir un timeout plus long pour la génération de vidéo
+                    timeout = 300 if tool_name == "create_video" else 30
+                    
+                    action_response = requests.post(
+                        f"{self.SERVER_URL}/execute_action",
+                        json={"tool_name": tool_name, "tool_params": tool_params},
+                        timeout=timeout
+                    )
+                    action_response.raise_for_status()
+                    
+                    action_data = action_response.json()
+                    if "error" in action_data:
+                        raise Exception(f"Erreur d'action du serveur : {action_data['error']}")
+                    
+                    tool_result = action_data.get("result")
+                    self.conversation_history.append({"role": "tool_result", "content": tool_result})
+                    
+                    # Si l'action était search_web, on doit gérer l'URL retournée
+                    if tool_name == 'search_web':
+                        url_match = re.search(r"URL:\s*(https?://[^\s]+)", tool_result)
                         if url_match:
                             url = url_match.group(1)
-                            self.append_conversation("System", f"URL trouvée : {url}. Chargement...")
-                            self.switch_view_signal.emit(1) # Ouvre le navigateur
-                            self.load_url_signal.emit(url)  # Charge l'URL
-                            # Le reste du cycle est géré par _on_web_view_load_finished
+                            self.append_conversation("System", f"URL trouvée par le serveur : {url}. Chargement...")
+                            self.switch_view_signal.emit(1)
+                            self.load_url_signal.emit(url)
+                            # Le cycle continue via _on_web_view_load_finished
+                            return
                         else:
-                            # Si search_web ne retourne pas d'URL (ex: aucun résultat)
-                            self.append_conversation("System Error", tool_result_raw)
-                            self.voice.speak(tool_result_raw)
+                            # Si search_web ne retourne pas d'URL
+                            self.append_conversation("System Error", tool_result)
+                            self.voice.speak(tool_result)
                             self.enable_input_signal.emit(True)
-                    else:
-                        self.append_conversation("System Error", "Requête manquante pour search_web.")
-                        self.voice.speak("Désolé, je ne sais pas quoi chercher.")
-                        self.enable_input_signal.emit(True)
+                            return
+                            
+                    # Pour les autres actions serveur, on continue la boucle en redemandant au cerveau de penser
+                    threading.Thread(target=self.process_command, daemon=True).start()
+                    return  # Important pour ne pas exécuter le code qui suit
                 
-                elif tool_name == 'click':
-                    element_id = tool_params.get("element_id")
-                    if element_id is not None:
-                        self.execute_click_signal.emit(element_id) # DÉCLENCHE LE CLIC !
-                        # L'exécution _handle_web_action_result prendra le relais
-                    else:
-                        self.append_conversation("System Error", "ID d'élément manquant pour le clic.")
-                        self.voice.speak("Désolé, je ne sais pas où cliquer.")
-                        self.enable_input_signal.emit(True)
-
-                elif tool_name == 'type_text':
-                    element_id = tool_params.get("element_id")
-                    text_to_type = tool_params.get("text")
-                    if element_id is not None and text_to_type is not None:
-                        self.execute_type_text_signal.emit(element_id, text_to_type) # DÉCLENCHE LA SAISIE !
-                        # L'exécution _handle_web_action_result prendra le relais
-                    else:
-                        self.append_conversation("System Error", "ID d'élément ou texte manquant pour la saisie.")
-                        self.voice.speak("Désolé, je ne sais pas où ou quoi écrire.")
-                        self.enable_input_signal.emit(True)
-                
-                elif tool_name == 'navigate':
-                    url = tool_params.get("url")
-                    if url:
-                        self.append_conversation("System", f"Navigation directe vers : {url}.")
-                        self.switch_view_signal.emit(1) # Ouvre le navigateur
-                        self.load_url_signal.emit(url)
-                        # L'exécution _on_web_view_load_finished prendra le relais
-                    else:
-                        self.append_conversation("System Error", "URL manquante pour la navigation.")
-                        self.voice.speak("Désolé, je ne sais pas où naviguer.")
-                        self.enable_input_signal.emit(True)
-
-                else: # Pour tout autre outil non web (ex: get_current_time)
-                    # Utilise getattr pour appeler dynamiquement la méthode de self.actions
-                    tool_function = getattr(self.actions, tool_name, None)
-                    if tool_function:
-                        tool_result = tool_function(**tool_params)
-                        self.append_conversation("Tool", f"Résultat : {tool_result[:200]}...")
-                        self.conversation_history.append({"role": "tool_result", "content": tool_result})
-                        
-                        # Demande au cerveau de formuler la réponse finale
-                        self.append_conversation("Hector", "Je formule la réponse finale...")
-                        final_response = self.brain.think(self.conversation_history)
-                        self.conversation_history.append({"role": "assistant", "content": final_response})
-                        
-                        self.append_conversation("Hector", final_response)
-                        self.voice.speak(final_response)
-                        self.enable_input_signal.emit(True)
-                    else:
-                        self.append_conversation("System Error", f"Outil '{tool_name}' inconnu ou non implémenté.")
-                        self.voice.speak(f"Désolé, je ne connais pas l'outil {tool_name}.")
-                        self.enable_input_signal.emit(True)
+                # Si l'action doit être exécutée par le CLIENT (manipulation de la GUI)
+                elif tool_name in ['click', 'type_text', 'navigate']:
+                    self.append_conversation("Tool", f"Exécution de l'action locale : {tool_name}")
+                    if tool_name == 'click':
+                        self.execute_click_signal.emit(tool_params.get("element_id", ""))
+                    elif tool_name == 'type_text':
+                        self.execute_type_text_signal.emit(tool_params.get("element_id", ""), tool_params.get("text", ""))
+                    elif tool_name == 'navigate':
+                        self.load_url_signal.emit(tool_params.get("url", ""))
+                        self.switch_view_signal.emit(1)
+                else:
+                    self.append_conversation("System Error", f"Outil '{tool_name}' inconnu ou non géré par le client.")
+                    self.enable_input_signal.emit(True)
 
             else:
-                # Ce n'est pas un appel d'outil, c'est une réponse directe du cerveau.
-                self.switch_view_signal.emit(0) # Assure que le navigateur est fermé si on ne l'utilise plus.
+                # C'est une réponse directe, on l'affiche et on la dit
+                self.switch_view_signal.emit(0)
                 self.append_conversation("Hector", hector_action_or_response)
                 self.voice.speak(hector_action_or_response)
                 self.enable_input_signal.emit(True)
 
+        except requests.exceptions.RequestException as e:
+            error_message = f"Erreur de connexion au serveur : {e}"
+            self.append_conversation("System Error", error_message)
+            self.voice.speak("Oups, je n'arrive pas à contacter mon cerveau. Veuillez vérifier la connexion et l'adresse du serveur.")
+            self.enable_input_signal.emit(True)
         except Exception as e:
             error_message = f"Erreur lors du traitement de la commande : {e}"
             self.append_conversation("System Error", error_message)
-            self.voice.speak("Oups, une erreur est survenue pendant ma réflexion. Veuillez réessayer.")
+            self.voice.speak("Oups, une erreur est survenue pendant ma réflexion.")
             self.enable_input_signal.emit(True)
-            self.set_loading_indicator_signal.emit(False)
 
 def start_gui():
     # os.environ['QTWEBENGINE_DISABLE_SANDBOX'] = '1' # Déjà défini dans config.py si nécessaire, mais parfois utile ici.
