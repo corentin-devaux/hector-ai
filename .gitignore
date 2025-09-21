@@ -1,0 +1,21 @@
+# Environnement virtuel Python
+.venv/
+venv/
+
+# Fichiers de cache et temporaires Python
+__pycache__/
+*.pyc
+
+# Dossiers de données et de résultats générés
+/temp_data/
+/outputs/
+
+# Fichiers de modèles IA lourds (TRÈS IMPORTANT)
+/models/*.gguf
+/models/*.safetensors
+/models/*.bin
+
+# Dossiers de configuration de l'éditeur de code
+.vscode/
+.cursor/
+.idea/

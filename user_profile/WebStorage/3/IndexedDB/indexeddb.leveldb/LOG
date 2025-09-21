@@ -1,0 +1,11 @@
+2025/09/14-10:10:59.981 4218 Reusing MANIFEST C:\Users\Corentin\Documents\VS Code\Hector 3\user_profile\WebStorage\3\IndexedDB\indexeddb.leveldb/MANIFEST-000001
+2025/09/14-10:11:00.009 4218 Recovering log #15
+2025/09/14-10:11:00.010 4218 Reusing old log C:\Users\Corentin\Documents\VS Code\Hector 3\user_profile\WebStorage\3\IndexedDB\indexeddb.leveldb/000015.log 
+2025/09/14-10:11:00.011 4218 Delete type=2 #14
+2025/09/14-10:11:00.011 4218 Delete type=2 #16
+2025/09/14-10:26:59.921 894 Compacting 1@1 + 1@2 files
+2025/09/14-10:26:59.929 894 Generated table #19@1: 109 keys, 5908 bytes
+2025/09/14-10:26:59.929 894 Compacted 1@1 + 1@2 files => 5908 bytes
+2025/09/14-10:26:59.931 894 compacted to: files[ 0 0 1 0 0 0 0 ]
+2025/09/14-10:26:59.931 894 Delete type=2 #5
+2025/09/14-10:26:59.932 894 Delete type=2 #17
