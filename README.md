@@ -147,15 +147,3 @@ Les contributions sont bienvenues !
 
 📄 Licence
 Distribué sous MIT License. Voir LICENSE.
-
-yaml
-Copier le code
-
----
-
-💡 Maintenant ton README est :  
-- **Beaucoup plus lisible** (titres, sections nettes)  
-- **Facile à copier-coller** (commandes dans des blocs bien séparés)  
-- **Uniformisé** (tableaux propres, code bien formaté).  
-
-Veux-tu que je t’ajoute aussi un **sommaire cliquable** tout en haut pour naviguer directement vers chaque section
