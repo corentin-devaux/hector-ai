@@ -62,76 +62,83 @@ Communication via **FastAPI REST API**.
 ```bash
 git clone https://github.com/corentin-devaux/hector-ai-agent.git
 cd hector-ai-agent
+```
 b. Installer les dépendances
-bash
-Copier le code
+```bash
 # Créer un environnement virtuel
 python3 -m venv .venv
 source .venv/bin/activate
-
+```
+```bash
 # Installer les paquets
 pip install --upgrade pip
 pip install -r requirements.txt
+```
 c. Activer l’accélération GPU (llama-cpp-python avec CUDA)
-bash
-Copier le code
+```bash
 pip uninstall -y llama-cpp-python
 CMAKE_ARGS="-DLLAMA_CUBLAS=on" FORCE_CMAKE=1 pip install --no-cache-dir llama-cpp-python
+```
 d. Télécharger les modèles
-bash
-Copier le code
+```bash
 # Créer le dossier
 mkdir -p models
 cd models
-
+```
+```bash
 # 1. LLM Gemma
 wget "URL_DU_MODELE_GEMMA_GGUF" -O gemma-model.gguf
-
+```
+```bash
 # 2. Vidéo Wan-2.2
 git clone URL_DU_MODELE_WAN2.2 wan-2.2-model
+```
 📌 Vérifiez les chemins dans src/config.py.
 
 2. Client (PC local)
 a. Cloner le dépôt
-bash
-Copier le code
+```bash
 git clone https://github.com/corentin-devaux/hector-ai-agent.git
 cd hector-ai-agent
+```
 b. Installer les dépendances
-bash
-Copier le code
+```bash
 # Créer un environnement virtuel
 python -m venv .venv
-
+```
+```bash
 # Activer selon votre OS
 # Windows :
 .\.venv\Scripts\activate
 # macOS/Linux :
 source .venv/bin/activate
-
+```
+```bash
 # Installer les paquets
 pip install -r requirements.txt
+```
 c. Configurer l’adresse du serveur
 Éditez src/gui/main_window.py :
 
-python
-Copier le code
+```bash
 self.SERVER_URL = "http://123.45.67.89:12345"
+```
 ▶️ Lancement
 Étape 1 : Démarrer le serveur (GPU distant)
-bash
-Copier le code
+```bash
 source .venv/bin/activate
 python src/server_api.py
+```
 Étape 2 : Lancer le client (PC local)
-bash
-Copier le code
+```bash
 # Activer l’environnement
 .\.venv\Scripts\activate   # Windows
 source .venv/bin/activate  # macOS/Linux
-
+```
+```bash
 # Lancer la GUI
 python src/gui/main_window.py
+```
 🧠 Modèles utilisés
 Composant	Modèle	Rôle
 Cerveau (LLM)	Gemma 9B GGUF	Raisonnement, génération
