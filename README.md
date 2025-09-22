@@ -21,18 +21,18 @@
 
 - 🗣️ **Interaction Vocale Naturelle** : Whisper (STT) + gTTS (TTS)  
 - 🧠 **Raisonnement Avancé** : LLM Gemma pour compréhension et planification  
-- 🌐 **Navigation Web Autonome** : Analyse, clics, formulaires  
+- 🌐 **Navigation Web Autonome** : Analyse de pages, clics, formulaires  
 - 🎬 **Génération Vidéo** : Modèle Wan-2.2 (texte → vidéo)  
-- 💻 **Architecture Client-Serveur** : Calculs IA sur GPU distant, GUI légère en local  
+- 💻 **Architecture Client-Serveur** : calculs IA sur GPU distant, GUI légère en local  
 
 ---
 
 ## 🏛️ Architecture
 
-| Composant   | Description | Exécution |
-|-------------|-------------|-----------|
-| 🤖 **Serveur API** | Le cerveau et les muscles (LLM, vidéo). | Machine distante avec GPU (RunPod, AWS, etc.) |
-| 🖥️ **Client GUI** | Le visage et les sens (micro, audio, navigateur). | PC local (Windows/macOS/Linux) |
+| Composant        | Description                                       | Exécution                         |
+|------------------|---------------------------------------------------|-----------------------------------|
+| 🤖 Serveur API   | Cerveau et muscles (LLM, vidéo)                   | Machine distante (RunPod, AWS…)   |
+| 🖥️ Client GUI    | Visage et sens (micro, audio, navigateur web)     | PC local (Windows/macOS/Linux)    |
 
 Communication via **FastAPI REST API**.
 
@@ -41,22 +41,22 @@ Communication via **FastAPI REST API**.
 ## 🛠️ Prérequis
 
 ### Serveur (GPU)
-- Linux (Ubuntu 22.04 recommandé)  
-- NVIDIA GPU + CUDA  
+- Ubuntu 22.04 (recommandé)  
+- NVIDIA GPU + drivers CUDA  
 - Python 3.10+  
-- Git + Git LFS  
+- Git & Git LFS  
 
-### Client (Local)
+### Client (PC local)
 - Windows, macOS ou Linux  
 - Python 3.10+  
 - Git  
-- Micro + Haut-parleurs  
+- Microphone + haut-parleurs  
 
 ---
 
 ## ⚙️ Installation
 
-### 1. Configuration du Serveur (GPU distant)
+### 1. Serveur (GPU distant)
 
 #### a. Cloner le dépôt
 ```bash
@@ -65,32 +65,33 @@ cd hector-ai-agent
 b. Installer les dépendances
 bash
 Copier le code
-# Créer et activer un venv
+# Créer un environnement virtuel
 python3 -m venv .venv
 source .venv/bin/activate
 
 # Installer les paquets
 pip install --upgrade pip
 pip install -r requirements.txt
-⚠️ GPU : Compilation de llama-cpp-python avec CUDA
+c. Activer l’accélération GPU (llama-cpp-python avec CUDA)
 bash
 Copier le code
 pip uninstall -y llama-cpp-python
 CMAKE_ARGS="-DLLAMA_CUBLAS=on" FORCE_CMAKE=1 pip install --no-cache-dir llama-cpp-python
-c. Télécharger les modèles
+d. Télécharger les modèles
 bash
 Copier le code
-# Créer dossier des modèles
-mkdir -p models && cd models
+# Créer le dossier
+mkdir -p models
+cd models
 
 # 1. LLM Gemma
 wget "URL_DU_MODELE_GEMMA_GGUF" -O gemma-model.gguf
 
 # 2. Vidéo Wan-2.2
 git clone URL_DU_MODELE_WAN2.2 wan-2.2-model
-📌 Vérifiez que les chemins dans src/config.py correspondent.
+📌 Vérifiez les chemins dans src/config.py.
 
-2. Configuration du Client (PC local)
+2. Client (PC local)
 a. Cloner le dépôt
 bash
 Copier le code
@@ -99,46 +100,46 @@ cd hector-ai-agent
 b. Installer les dépendances
 bash
 Copier le code
-# Créer et activer un venv
+# Créer un environnement virtuel
 python -m venv .venv
 
-# Activer (selon OS)
-# Windows
+# Activer selon votre OS
+# Windows :
 .\.venv\Scripts\activate
-# macOS/Linux
+# macOS/Linux :
 source .venv/bin/activate
 
-# Installer paquets
+# Installer les paquets
 pip install -r requirements.txt
 c. Configurer l’adresse du serveur
-Modifier dans src/gui/main_window.py :
+Éditez src/gui/main_window.py :
 
 python
 Copier le code
 self.SERVER_URL = "http://123.45.67.89:12345"
 ▶️ Lancement
-Étape 1 : Démarrer le Serveur (sur GPU distant)
+Étape 1 : Démarrer le serveur (GPU distant)
 bash
 Copier le code
 source .venv/bin/activate
 python src/server_api.py
-Étape 2 : Lancer le Client (sur PC local)
+Étape 2 : Lancer le client (PC local)
 bash
 Copier le code
-# Activer venv
-.\.venv\Scripts\activate  # Windows
-source .venv/bin/activate # macOS/Linux
+# Activer l’environnement
+.\.venv\Scripts\activate   # Windows
+source .venv/bin/activate  # macOS/Linux
 
-# Lancer GUI
+# Lancer la GUI
 python src/gui/main_window.py
-🧠 Modèles d’IA
+🧠 Modèles utilisés
 Composant	Modèle	Rôle
 Cerveau (LLM)	Gemma 9B GGUF	Raisonnement, génération
 Oreilles (STT)	Whisper large-v3	Transcription vocale
 Vidéo (Gen)	Wan-2.2	Texte → Vidéo
 Voix (TTS)	gTTS	Synthèse vocale
 
-Tous les chemins configurables dans src/config.py.
+📌 Tous configurables dans src/config.py.
 
 🤝 Contribution
 Les contributions sont bienvenues !
@@ -152,4 +153,9 @@ Copier le code
 
 ---
 
-Veux-tu que je t’ajoute aussi un **sommaire cliquable (table of contents)** en haut du README pour naviguer rapidement entre les sections ?
+💡 Maintenant ton README est :  
+- **Beaucoup plus lisible** (titres, sections nettes)  
+- **Facile à copier-coller** (commandes dans des blocs bien séparés)  
+- **Uniformisé** (tableaux propres, code bien formaté).  
+
+Veux-tu que je t’ajoute aussi un **sommaire cliquable** tout en haut pour naviguer directement vers chaque section
